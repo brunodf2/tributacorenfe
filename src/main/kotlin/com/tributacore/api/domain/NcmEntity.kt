@@ -1,20 +1,18 @@
 package com.tributacore.api.domain
 
 import jakarta.persistence.*
+import java.time.Instant
 
 @Entity
-@Table(name = "ncm", indexes = [Index(name = "idx_ncm_codigo", columnList = "codigo")])
+@Table(name = "ncm")
 data class NcmEntity(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0,
-
-    @Column(nullable = false, unique = true, length = 8)
+    @Column(name = "codigo", nullable = false, length = 8)
     val codigo: String,
 
-    @Column(nullable = false, length = 500)
+    @Column(nullable = false, columnDefinition = "TEXT")
     val descricao: String,
 
-    @Column(length = 500)
-    val descricaoNormalizada: String? = null
+    @Column(name = "atualizado_em", nullable = false)
+    val atualizadoEm: Instant = Instant.now()
 )

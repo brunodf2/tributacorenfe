@@ -11,10 +11,12 @@ enum class AlertSeverity {
 @Entity
 @Table(name = "job_alerts")
 data class JobAlertEntity(
-    @Id
-    val id: UUID = UUID.randomUUID(),
 
-    @Column(nullable = false)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long? = null,
+
+    @Column(name = "job_id", nullable = false)
     val jobId: UUID,
 
     @Column(nullable = false)

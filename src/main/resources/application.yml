@@ -10,7 +10,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
@@ -31,6 +31,9 @@ tributacore:
   limits:
     max-zip-size-mb: 100
     max-xml-size-mb: 10
+  ncm:
+    json-path: Tabela_NCM_Vigente_20260127.json
+    force-reload: false
 
 logging:
   level:

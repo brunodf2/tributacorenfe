@@ -6,8 +6,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 
 @Repository
-interface NcmRepository : JpaRepository<NcmEntity, Long> {
-    fun findByCodigo(codigo: String): NcmEntity?
+interface NcmRepository : JpaRepository<NcmEntity, String> {
     fun existsByCodigo(codigo: String): Boolean
 
     @Query("SELECT n FROM NcmEntity n WHERE n.codigo LIKE :prefix%")

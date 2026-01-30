@@ -19,7 +19,7 @@ class NcmCompatibilityService(
     fun validateAndSuggest(ncmOriginal: String, productDescription: String): NcmSuggestion {
         val ncmSanitizado = textNormalizer.sanitizeNcm(ncmOriginal)
 
-        val ncmExistente = ncmRepository.findByCodigo(ncmSanitizado)
+        val ncmExistente = ncmRepository.findById(ncmSanitizado).orElse(null)
 
         if (ncmExistente != null) {
             return NcmSuggestion(
@@ -45,6 +45,7 @@ class NcmCompatibilityService(
     }
 
     private fun findBestMatch(productDescription: String, ncmSanitizado: String): Pair<NcmEntity, Double>? {
+        val normalizedProductDesc = textNormalizer.normalize(productDescription)
         val prefix = ncmSanitizado.take(4)
         val candidates = if (prefix.isNotEmpty()) {
             ncmRepository.findByCodigoStartingWith(prefix).ifEmpty {
@@ -58,8 +59,8 @@ class NcmCompatibilityService(
 
         return candidates
             .map { ncm ->
-                val descToCompare = ncm.descricaoNormalizada ?: ncm.descricao
-                val sim = similarity.combinedSimilarity(productDescription, descToCompare)
+                val normalizedNcmDesc = textNormalizer.normalize(ncm.descricao)
+                val sim = similarity.combinedSimilarity(normalizedProductDesc, normalizedNcmDesc)
                 ncm to sim
             }
             .filter { it.second >= MIN_SIMILARITY_THRESHOLD }

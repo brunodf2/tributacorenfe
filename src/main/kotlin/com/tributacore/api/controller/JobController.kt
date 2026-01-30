@@ -44,7 +44,7 @@ class JobController(private val jobService: JobService) {
         }
     }
 
-    @GetMapping("/{id}/result.csv")
+    @GetMapping("/{id}/result.csv", produces = ["text/csv"])
     fun getResultCsv(@PathVariable id: UUID): ResponseEntity<Resource> {
         return try {
             val file = jobService.getResultFile(id)
@@ -52,7 +52,10 @@ class JobController(private val jobService: JobService) {
 
             ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"result-${id}.csv\"")
-                .contentType(MediaType.parseMediaType("text/csv"))
+                .header(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8")
+                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .header(HttpHeaders.EXPIRES, "0")
                 .contentLength(file.length())
                 .body(resource)
         } catch (e: NoSuchElementException) {

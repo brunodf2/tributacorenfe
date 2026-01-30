@@ -24,7 +24,7 @@ data class JobCreateResponse(
 )
 
 data class JobAlertResponse(
-    val id: UUID,
+    val id: Long?,
     val xmlFileName: String,
     val severity: AlertSeverity,
     val message: String,

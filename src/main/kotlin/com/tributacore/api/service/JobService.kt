@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile
 import java.io.File
 import java.io.FileWriter
@@ -57,9 +59,14 @@ class JobService(
         val tempFile = File.createTempFile("job-${job.id}", ".zip")
         file.transferTo(tempFile)
 
-        executor.submit {
-            processJobAsync(job.id, tempFile)
-        }
+        // Schedule async processing after transaction commits
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() {
+                executor.submit {
+                    processJobAsync(job.id, tempFile)
+                }
+            }
+        })
 
         return JobCreateResponse(
             id = job.id,
