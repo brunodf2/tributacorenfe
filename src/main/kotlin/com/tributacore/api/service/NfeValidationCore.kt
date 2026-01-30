@@ -55,6 +55,22 @@ class NfeValidationCore(
                 } else {
                     warnings.add("Item $itemKey: NCM ${item.ncm} não encontrado e sem sugestão disponível")
                 }
+            } else if (!suggestion.descricaoCompativel) {
+                // NCM existe mas descrição do produto não é compatível
+                val similarityPercent = String.format("%.2f", (suggestion.similaridade ?: 0.0) * 100)
+                if (suggestion.sugestao != null) {
+                    warnings.add(
+                        "Item $itemKey: Descrição do produto '${item.xProd}' tem baixa similaridade ($similarityPercent%) " +
+                        "com a descrição oficial do NCM ${suggestion.ncmSanitizado} ('${suggestion.descricaoSugestao}'). " +
+                        "Sugestão alternativa: ${suggestion.sugestao}"
+                    )
+                } else {
+                    warnings.add(
+                        "Item $itemKey: Descrição do produto '${item.xProd}' tem baixa similaridade ($similarityPercent%) " +
+                        "com a descrição oficial do NCM ${suggestion.ncmSanitizado} ('${suggestion.descricaoSugestao}'). " +
+                        "Verifique se o NCM está correto."
+                    )
+                }
             }
 
             if (item.xProd.isBlank()) {

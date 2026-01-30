@@ -41,7 +41,7 @@ class JobService(
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
 
     companion object {
-        private const val CSV_HEADER = "xml_file,chave_nfe,numero_nfe,n_item,c_prod,x_prod,ncm_original,ncm_sanitizado,ncm_valido,ncm_sugerido,similaridade,status"
+        private const val CSV_HEADER = "xml_file,chave_nfe,numero_nfe,n_item,c_prod,x_prod,ncm_original,ncm_sanitizado,ncm_valido,descricao_ncm_oficial,descricao_compativel,ncm_sugerido,similaridade,status,observacao"
     }
 
     @Transactional
@@ -211,6 +211,20 @@ class JobService(
             val itemKey = "${item.nItem}-${item.cProd}"
             val suggestion = validationResult.ncmSuggestions[itemKey]
 
+            // Determinar status e observação
+            val (status, observacao) = when {
+                suggestion == null -> "ERROR" to "NCM não processado"
+                !suggestion.valido && suggestion.sugestao != null ->
+                    "NCM_INVALIDO" to "NCM não existe na base. Sugestão: ${suggestion.sugestao}"
+                !suggestion.valido ->
+                    "NCM_INVALIDO" to "NCM não existe na base"
+                !suggestion.descricaoCompativel && suggestion.sugestao != null ->
+                    "DESCRICAO_INCOMPATIVEL" to "Descrição do produto não corresponde ao NCM. Similaridade: ${String.format("%.1f", (suggestion.similaridade ?: 0.0) * 100)}%. Sugestão: ${suggestion.sugestao}"
+                !suggestion.descricaoCompativel ->
+                    "DESCRICAO_INCOMPATIVEL" to "Descrição do produto não corresponde ao NCM. Similaridade: ${String.format("%.1f", (suggestion.similaridade ?: 0.0) * 100)}%"
+                else -> "OK" to null
+            }
+
             val row = CsvResultRow(
                 xmlFileName = xmlFileName,
                 chaveNfe = nfeData.chave,
@@ -221,9 +235,12 @@ class JobService(
                 ncmOriginal = item.ncm,
                 ncmSanitizado = textNormalizer.sanitizeNcm(item.ncm),
                 ncmValido = suggestion?.valido ?: false,
+                descricaoNcmOficial = suggestion?.descricaoSugestao,
+                descricaoCompativel = suggestion?.descricaoCompativel ?: false,
                 ncmSugerido = suggestion?.sugestao,
                 similaridade = suggestion?.similaridade,
-                status = if (suggestion?.valido == true) "OK" else "REVIEW"
+                status = status,
+                observacao = observacao
             )
 
             writer.println(toCsvLine(row))
@@ -255,9 +272,12 @@ class JobService(
             escapeCsv(row.ncmOriginal),
             escapeCsv(row.ncmSanitizado),
             row.ncmValido.toString(),
+            escapeCsv(row.descricaoNcmOficial ?: ""),
+            row.descricaoCompativel.toString(),
             escapeCsv(row.ncmSugerido ?: ""),
             row.similaridade?.let { String.format("%.4f", it) } ?: "",
-            row.status
+            row.status,
+            escapeCsv(row.observacao ?: "")
         ).joinToString(",")
     }
 

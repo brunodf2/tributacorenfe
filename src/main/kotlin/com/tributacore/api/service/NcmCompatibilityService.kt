@@ -14,6 +14,7 @@ class NcmCompatibilityService(
 
     companion object {
         private const val MIN_SIMILARITY_THRESHOLD = 0.3
+        private const val DESCRIPTION_MATCH_THRESHOLD = 0.4 // Limiar para considerar descrição compatível
     }
 
     fun validateAndSuggest(ncmOriginal: String, productDescription: String): NcmSuggestion {
@@ -22,13 +23,21 @@ class NcmCompatibilityService(
         val ncmExistente = ncmRepository.findById(ncmSanitizado).orElse(null)
 
         if (ncmExistente != null) {
+            // NCM existe - calcular similaridade entre descrição do produto e descrição oficial do NCM
+            val normalizedProductDesc = textNormalizer.normalize(productDescription)
+            val normalizedNcmDesc = textNormalizer.normalize(ncmExistente.descricao)
+            val descriptionSimilarity = similarity.combinedSimilarity(normalizedProductDesc, normalizedNcmDesc)
+
+            val isDescriptionCompatible = descriptionSimilarity >= DESCRIPTION_MATCH_THRESHOLD
+
             return NcmSuggestion(
                 ncmOriginal = ncmOriginal,
                 ncmSanitizado = ncmSanitizado,
                 valido = true,
-                sugestao = null,
+                sugestao = if (isDescriptionCompatible) null else findBetterNcmMatch(productDescription, ncmSanitizado)?.first?.codigo,
                 descricaoSugestao = ncmExistente.descricao,
-                similaridade = null
+                similaridade = descriptionSimilarity,
+                descricaoCompativel = isDescriptionCompatible
             )
         }
 
@@ -40,7 +49,8 @@ class NcmCompatibilityService(
             valido = false,
             sugestao = suggestion?.first?.codigo,
             descricaoSugestao = suggestion?.first?.descricao,
-            similaridade = suggestion?.second
+            similaridade = suggestion?.second,
+            descricaoCompativel = false
         )
     }
 
@@ -64,6 +74,32 @@ class NcmCompatibilityService(
                 ncm to sim
             }
             .filter { it.second >= MIN_SIMILARITY_THRESHOLD }
+            .maxByOrNull { it.second }
+    }
+
+    /**
+     * Busca um NCM melhor quando a descrição do produto não é compatível com o NCM informado
+     */
+    private fun findBetterNcmMatch(productDescription: String, currentNcm: String): Pair<NcmEntity, Double>? {
+        val normalizedProductDesc = textNormalizer.normalize(productDescription)
+
+        // Buscar NCMs com prefixos similares (mesma categoria)
+        val prefix = currentNcm.take(4)
+        val candidates = if (prefix.isNotEmpty()) {
+            ncmRepository.findByCodigoStartingWith(prefix).filter { it.codigo != currentNcm }
+        } else {
+            emptyList()
+        }
+
+        if (candidates.isEmpty()) return null
+
+        return candidates
+            .map { ncm ->
+                val normalizedNcmDesc = textNormalizer.normalize(ncm.descricao)
+                val sim = similarity.combinedSimilarity(normalizedProductDesc, normalizedNcmDesc)
+                ncm to sim
+            }
+            .filter { it.second >= DESCRIPTION_MATCH_THRESHOLD }
             .maxByOrNull { it.second }
     }
 

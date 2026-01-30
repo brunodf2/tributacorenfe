@@ -79,7 +79,8 @@ data class NcmSuggestion(
     val valido: Boolean,
     val sugestao: String?,
     val descricaoSugestao: String?,
-    val similaridade: Double?
+    val similaridade: Double?,
+    val descricaoCompativel: Boolean = true
 )
 
 data class CsvResultRow(
@@ -92,7 +93,10 @@ data class CsvResultRow(
     val ncmOriginal: String,
     val ncmSanitizado: String,
     val ncmValido: Boolean,
+    val descricaoNcmOficial: String?,
+    val descricaoCompativel: Boolean,
     val ncmSugerido: String?,
     val similaridade: Double?,
-    val status: String
+    val status: String,
+    val observacao: String?
 )
