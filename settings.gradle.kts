@@ -1,0 +1,1 @@
+rootProject.name = "tributacore-api"

@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: tributacore-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nfe
+      POSTGRES_USER: nfe
+      POSTGRES_PASSWORD: nfe
+    ports:
+      - "5432:5432"
+    volumes:
+      - tributacore_pgdata:/var/lib/postgresql/data
+      # opcional: cria tabelas automaticamente ao subir pela 1ª vez
+      # - ./init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nfe -d nfe"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  tributacore_pgdata:
