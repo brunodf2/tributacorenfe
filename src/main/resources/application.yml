@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: tributacore-api
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/nfe
+    username: nfe
+    password: nfe
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+server:
+  port: 8080
+
+tributacore:
+  storage:
+    result-path: ./results
+  limits:
+    max-zip-size-mb: 100
+    max-xml-size-mb: 10
+
+logging:
+  level:
+    root: INFO
+    com.tributacore.api: DEBUG
+    org.hibernate.SQL: WARN

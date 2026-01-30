@@ -1,4 +1,4 @@
-package com.tributacore.tributacore_api
+package com.tributacore.api
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
@@ -7,5 +7,5 @@ import org.springframework.boot.runApplication
 class TributacoreApiApplication
 
 fun main(args: Array<String>) {
-	runApplication<TributacoreApiApplication>(*args)
+    runApplication<TributacoreApiApplication>(*args)
 }
