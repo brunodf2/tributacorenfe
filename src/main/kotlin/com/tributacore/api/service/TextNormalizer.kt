@@ -15,6 +15,31 @@ class TextNormalizer {
             .trim()
     }
 
+    /**
+     * Normalização específica para mapeamento de produtos.
+     * Remove palavras comuns de unidade de medida e códigos.
+     */
+    fun normalizeForMapping(text: String): String {
+        val stopWords = setOf(
+            "un", "und", "unid", "unidade", "unidades",
+            "kg", "kgs", "gr", "grs", "g", "mg",
+            "ml", "mls", "lt", "lts", "l",
+            "cx", "caixa", "pct", "pacote", "pc", "pç", "peca",
+            "ref", "cod", "codigo",
+            "de", "do", "da", "dos", "das", "em", "no", "na", "nos", "nas",
+            "com", "sem", "para", "por", "e", "ou", "a", "o", "as", "os"
+        )
+
+        return text
+            .lowercase()
+            .let { removeAccents(it) }
+            .replace(Regex("[^a-z0-9\\s]"), " ")
+            .split(Regex("\\s+"))
+            .filter { it.length > 1 && it !in stopWords }
+            .joinToString(" ")
+            .trim()
+    }
+
     fun tokenize(text: String): Set<String> {
         return normalize(text)
             .split(" ")

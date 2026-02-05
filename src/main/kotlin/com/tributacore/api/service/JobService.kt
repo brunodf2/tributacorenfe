@@ -41,7 +41,7 @@ class JobService(
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
 
     companion object {
-        private const val CSV_HEADER = "xml_file,chave_nfe,numero_nfe,n_item,c_prod,x_prod,ncm_original,ncm_sanitizado,ncm_valido,descricao_ncm_oficial,descricao_compativel,ncm_sugerido,similaridade,status,observacao"
+        private const val CSV_HEADER = "xml_file,chave_nfe,numero_nfe,n_item,c_prod,x_prod,ncm_original,ncm_sanitizado,ncm_valido,descricao_ncm_oficial,descricao_compativel,ncm_sugerido,ncm_sugerido_descricao,ncm_sugerido_similaridade,similaridade,mapeamento_customizado,status,observacao"
     }
 
     @Transactional
@@ -152,6 +152,33 @@ class JobService(
         if (extractionResult.isFailure) {
             val error = extractionResult.exceptionOrNull()?.message ?: "Unknown error"
 
+            // Verificar se é um arquivo de evento (não é erro, apenas ignorar)
+            val isEventoNfe = error.startsWith("EVENTO_NFE:")
+
+            if (isEventoNfe) {
+                // Arquivos de evento são ignorados silenciosamente (não são erros)
+                jobProgressRepository.save(
+                    JobProgressEntity(
+                        jobId = jobId,
+                        xmlFileName = xmlFileName,
+                        success = true, // Considerar como sucesso (arquivo processado, mas ignorado)
+                        errorMessage = "Arquivo de evento ignorado"
+                    )
+                )
+
+                jobAlertRepository.save(
+                    JobAlertEntity(
+                        jobId = jobId,
+                        xmlFileName = xmlFileName,
+                        severity = AlertSeverity.INFO,
+                        message = "Arquivo de evento de NFe ignorado (cancelamento, carta de correção, etc.)"
+                    )
+                )
+
+                writer.println("${escapeCsv(xmlFileName)},,,,,,,,,,,,,,,IGNORADO,Arquivo de evento de NFe (não é uma nota fiscal)")
+                return
+            }
+
             jobProgressRepository.save(
                 JobProgressEntity(
                     jobId = jobId,
@@ -170,7 +197,7 @@ class JobService(
                 )
             )
 
-            writer.println("${escapeCsv(xmlFileName)},,,,,,,,,,ERROR: $error")
+            writer.println("${escapeCsv(xmlFileName)},,,,,,,,,,,,,,,ERROR,$error")
             return
         }
 
@@ -214,14 +241,18 @@ class JobService(
             // Determinar status e observação
             val (status, observacao) = when {
                 suggestion == null -> "ERROR" to "NCM não processado"
+                suggestion.mapeamentoCustomizado && suggestion.sugestao != null ->
+                    "MAPEAMENTO_SUGERIDO" to "NCM incorreto. Mapeamento customizado sugere: ${suggestion.sugestao} - ${suggestion.ncmSugeridoDescricao ?: ""}"
+                suggestion.mapeamentoCustomizado && suggestion.descricaoCompativel ->
+                    "OK_MAPEADO" to "Validado via mapeamento customizado"
                 !suggestion.valido && suggestion.sugestao != null ->
-                    "NCM_INVALIDO" to "NCM não existe na base. Sugestão: ${suggestion.sugestao}"
+                    "NCM_INVALIDO" to "NCM não existe na base. Sugestão baseada no produto: ${suggestion.sugestao} - ${suggestion.ncmSugeridoDescricao ?: ""} (Similaridade: ${String.format("%.1f", (suggestion.ncmSugeridoSimilaridade ?: 0.0) * 100)}%)"
                 !suggestion.valido ->
                     "NCM_INVALIDO" to "NCM não existe na base"
                 !suggestion.descricaoCompativel && suggestion.sugestao != null ->
-                    "DESCRICAO_INCOMPATIVEL" to "Descrição do produto não corresponde ao NCM. Similaridade: ${String.format("%.1f", (suggestion.similaridade ?: 0.0) * 100)}%. Sugestão: ${suggestion.sugestao}"
+                    "DESCRICAO_INCOMPATIVEL" to "Descrição do produto '${item.xProd}' não corresponde ao NCM '${suggestion.descricaoSugestao}'. Similaridade: ${String.format("%.1f", (suggestion.similaridade ?: 0.0) * 100)}%. Sugestão baseada no produto: ${suggestion.sugestao} - ${suggestion.ncmSugeridoDescricao ?: ""} (Similaridade: ${String.format("%.1f", (suggestion.ncmSugeridoSimilaridade ?: 0.0) * 100)}%)"
                 !suggestion.descricaoCompativel ->
-                    "DESCRICAO_INCOMPATIVEL" to "Descrição do produto não corresponde ao NCM. Similaridade: ${String.format("%.1f", (suggestion.similaridade ?: 0.0) * 100)}%"
+                    "DESCRICAO_INCOMPATIVEL" to "Descrição do produto '${item.xProd}' não corresponde ao NCM '${suggestion.descricaoSugestao}'. Similaridade: ${String.format("%.1f", (suggestion.similaridade ?: 0.0) * 100)}%"
                 else -> "OK" to null
             }
 
@@ -238,7 +269,10 @@ class JobService(
                 descricaoNcmOficial = suggestion?.descricaoSugestao,
                 descricaoCompativel = suggestion?.descricaoCompativel ?: false,
                 ncmSugerido = suggestion?.sugestao,
+                ncmSugeridoDescricao = suggestion?.ncmSugeridoDescricao,
+                ncmSugeridoSimilaridade = suggestion?.ncmSugeridoSimilaridade,
                 similaridade = suggestion?.similaridade,
+                mapeamentoCustomizado = suggestion?.mapeamentoCustomizado ?: false,
                 status = status,
                 observacao = observacao
             )
@@ -275,7 +309,10 @@ class JobService(
             escapeCsv(row.descricaoNcmOficial ?: ""),
             row.descricaoCompativel.toString(),
             escapeCsv(row.ncmSugerido ?: ""),
+            escapeCsv(row.ncmSugeridoDescricao ?: ""),
+            row.ncmSugeridoSimilaridade?.let { String.format("%.4f", it) } ?: "",
             row.similaridade?.let { String.format("%.4f", it) } ?: "",
+            row.mapeamentoCustomizado.toString(),
             row.status,
             escapeCsv(row.observacao ?: "")
         ).joinToString(",")

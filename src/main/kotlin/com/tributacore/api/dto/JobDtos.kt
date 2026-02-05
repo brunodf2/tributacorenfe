@@ -80,7 +80,36 @@ data class NcmSuggestion(
     val sugestao: String?,
     val descricaoSugestao: String?,
     val similaridade: Double?,
-    val descricaoCompativel: Boolean = true
+    val descricaoCompativel: Boolean = true,
+    val ncmSugeridoDescricao: String? = null,
+    val ncmSugeridoSimilaridade: Double? = null,
+    val mapeamentoCustomizado: Boolean = false // Indica se veio de mapeamento manual
+)
+
+// DTOs para Mapeamento Produto-NCM
+data class ProdutoNcmMapeamentoRequest(
+    val descricaoProduto: String,
+    val ncmCodigo: String
+)
+
+data class ProdutoNcmMapeamentoResponse(
+    val id: Long,
+    val descricaoProduto: String,
+    val descricaoNormalizada: String,
+    val ncmCodigo: String,
+    val ncmDescricao: String,  // Vem direto da tabela NCM
+    val ativo: Boolean,
+    val criadoEm: java.time.Instant,
+    val atualizadoEm: java.time.Instant
+)
+
+data class ProdutoNcmMapeamentoBulkRequest(
+    val mapeamentos: List<ProdutoNcmMapeamentoRequest>
+)
+
+data class ProdutoNcmMapeamentoBulkResponse(
+    val criados: Int,
+    val erros: List<String>
 )
 
 data class CsvResultRow(
@@ -96,7 +125,10 @@ data class CsvResultRow(
     val descricaoNcmOficial: String?,
     val descricaoCompativel: Boolean,
     val ncmSugerido: String?,
+    val ncmSugeridoDescricao: String?,
+    val ncmSugeridoSimilaridade: Double?,
     val similaridade: Double?,
+    val mapeamentoCustomizado: Boolean,
     val status: String,
     val observacao: String?
 )

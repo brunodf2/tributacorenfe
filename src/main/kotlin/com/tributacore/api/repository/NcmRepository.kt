@@ -11,4 +11,10 @@ interface NcmRepository : JpaRepository<NcmEntity, String> {
 
     @Query("SELECT n FROM NcmEntity n WHERE n.codigo LIKE :prefix%")
     fun findByCodigoStartingWith(prefix: String): List<NcmEntity>
+
+    @Query("SELECT n FROM NcmEntity n WHERE LOWER(n.descricao) LIKE LOWER(CONCAT('%', :termo, '%'))")
+    fun findByDescricaoContainingIgnoreCase(termo: String): List<NcmEntity>
+
+    @Query("SELECT n FROM NcmEntity n WHERE n.codigo LIKE :prefix% AND n.codigo != :excludeCodigo")
+    fun findByCodigoStartingWithExcluding(prefix: String, excludeCodigo: String): List<NcmEntity>
 }
