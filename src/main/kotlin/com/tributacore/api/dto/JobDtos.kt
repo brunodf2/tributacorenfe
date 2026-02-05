@@ -3,7 +3,7 @@ package com.tributacore.api.dto
 import com.tributacore.api.domain.AlertSeverity
 import com.tributacore.api.domain.JobStatus
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 data class JobResponse(
     val id: UUID,
